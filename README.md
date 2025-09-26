@@ -6,7 +6,7 @@ Implementação de uma biblioteca de logging thread-safe em C++ para a disciplin
 
 ## Digrama
 
-![Diagrama da arquitura](assets/Diagrama-Arquiteura-LPII.png)
+![Diagrama da arquitura](assets/Diagrama-Arquitetura-LPII.png)
 
 ## Como compilar e executar
 
