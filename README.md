@@ -10,6 +10,8 @@ libtslog.h, server.h, cliente.h e chat_room.h
 
 ## Diagrama
 
+![Diagrama da arquitura](assets/Diagrama-Arquitetura-LPII.png)
+
 ## Como compilar e executar
 
 ```bash
