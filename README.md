@@ -4,6 +4,10 @@
 
 Implementação de uma biblioteca de logging thread-safe em C++ para a disciplina de Programação Concorrente.
 
+## Headers principais
+
+libtslog.h, server.h, cliente.h e chat_room.h
+
 ## Digrama
 
 ![Diagrama da arquitura](assets/Diagrama-Arquitetura-LPII.png)
