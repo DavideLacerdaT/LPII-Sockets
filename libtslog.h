@@ -1,6 +1,3 @@
-// libtslog.h
-// Biblioteca de Logging Thread-Safe
-
 #pragma once
 
 #include <iostream>

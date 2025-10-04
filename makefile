@@ -1,27 +1,46 @@
 # Makefile
 CXX = g++
-CXXFLAGS = -std=c++11 -pthread -Wall -Wextra
+CXXFLAGS = -std=c++17 -pthread -Wall -Wextra
+
+# Listagem de arquivos objeto
+OBJS = main.o server.o client.o
 
 # Alvo principal
-main: main.cpp libtslog.h
-	$(CXX) $(CXXFLAGS) main.cpp -o main
+app: $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o app
 
-# Executar o programa
-run: main
+# Compilação dos objetos
+main.o: main.cpp server.h client.h libtslog.h
+	$(CXX) $(CXXFLAGS) -c main.cpp -o main.o
+
+server.o: server.cpp server.h libtslog.h
+	$(CXX) $(CXXFLAGS) -c server.cpp -o server.o
+
+client.o: client.cpp client.h libtslog.h
+	$(CXX) $(CXXFLAGS) -c client.cpp -o client.o
+
+# Executar o programa normalmente
+run: app
 	@echo "🚀 Executando programa..."
-	./main
+	./app
+
+# Executar script de exemplo
+example: app
+	@echo "🚀 Rodando exemplo automatizado..."
+	./run_example_wsl.sh
 
 # Limpar arquivos compilados
 clean:
-	rm -f main
+	rm -f app $(OBJS)
 	@echo "🧹 Arquivos limpos"
 
 # Ajuda
 help:
 	@echo "Comandos disponíveis:"
 	@echo "  make       - Compila o programa"
-	@echo "  make run   - Compila e executa"
+	@echo "  make run   - Compila e executa normalmente"
+	@echo "  make example - Compila e executa o script automatizado"
 	@echo "  make clean - Remove arquivos compilados"
 	@echo "  make help  - Mostra esta ajuda"
 
-.PHONY: run clean help
+.PHONY: run example clean help
