@@ -1,5 +1,5 @@
-#include "libtslog.h"
 #include "server.h"
+#include "libtslog.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -7,11 +7,12 @@
 #include <unistd.h>
 #include <cstring>
 #include <thread>
-#include <vector>
-#include <mutex>
 #include <algorithm>
+#include <queue>
 
-SimpleTCPServer::SimpleTCPServer(int port_) : server_fd(-1), port(port_) {}
+SimpleTCPServer::SimpleTCPServer(int port_)
+    : server_fd(-1), port(port_), connected_clients(0), next_client_id(1) {}
+
 SimpleTCPServer::~SimpleTCPServer() {
     if (server_fd != -1) close(server_fd);
 }
@@ -43,6 +44,14 @@ bool SimpleTCPServer::start() {
 
     LOG_INFO("Servidor iniciado na porta " + std::to_string(port));
 
+    std::thread([this] {
+        while (true) {
+            std::string msg = chatroom.wait_for_message();
+            LOG_INFO(msg);
+            broadcast(msg);
+        }
+    }).detach();
+
     while (true) {
         sockaddr_in client_addr{};
         socklen_t client_len = sizeof(client_addr);
@@ -52,31 +61,49 @@ bool SimpleTCPServer::start() {
             continue;
         }
 
+        int client_id;
+        {
+            std::unique_lock<std::mutex> lock(clients_mutex);
+            cv_slots.wait(lock, [this]{ return connected_clients < MAX_CLIENTS; });
+            connected_clients++;
+
+            if (!free_ids.empty()) {
+                client_id = free_ids.front();
+                free_ids.pop();
+            } else {
+                client_id = next_client_id++;
+            }
+
+            LOG_INFO("Cliente conectado! Slots restantes: " + std::to_string(MAX_CLIENTS - connected_clients));
+        }
+
         {
             std::lock_guard<std::mutex> lock(clients_mutex);
             clients.push_back(client_socket);
         }
 
-        std::thread(&SimpleTCPServer::handle_client, this, client_socket).detach();
+        chatroom.client_joined(client_id);
+
+        std::thread([this, client_socket, client_id]() {
+            handle_client(client_socket, client_id);
+
+            {
+                std::lock_guard<std::mutex> lock(clients_mutex);
+                connected_clients--;
+                free_ids.push(client_id);
+                LOG_INFO("Cliente #" + std::to_string(client_id) + " saiu! Slots restantes: " +
+                         std::to_string(MAX_CLIENTS - connected_clients));
+            }
+
+            cv_slots.notify_one();
+        }).detach();
     }
 
     return true;
 }
 
-void SimpleTCPServer::handle_client(int client_socket) {
+void SimpleTCPServer::handle_client(int client_socket, int client_id) {
     char buffer[1024];
-
-    {
-        std::string join_msg = ">>> Um novo cliente entrou na sala.";
-        LOG_INFO(join_msg);
-
-        std::lock_guard<std::mutex> lock(clients_mutex);
-        for (int sock : clients) {
-            if (sock != client_socket) {
-                send(sock, join_msg.c_str(), join_msg.size(), 0);
-            }
-        }
-    }
 
     while (true) {
         memset(buffer, 0, sizeof(buffer));
@@ -84,31 +111,22 @@ void SimpleTCPServer::handle_client(int client_socket) {
         if (n <= 0) break;
         buffer[n] = '\0';
 
-        LOG_INFO(std::string("Mensagem recebida: ") + buffer);
-
-        std::lock_guard<std::mutex> lock(clients_mutex);
-        for (int sock : clients) {
-            if (sock != client_socket) {
-                send(sock, buffer, strlen(buffer), 0);
-            }
-        }
+        std::string msg(buffer);
+        chatroom.add_message(msg);
     }
 
-    // Aviso de saída do cliente
     {
-        std::string leave_msg = "<<< Um cliente saiu da sala.";
-        LOG_INFO(leave_msg);
-
         std::lock_guard<std::mutex> lock(clients_mutex);
-        // remover cliente da lista primeiro
         clients.erase(std::remove(clients.begin(), clients.end(), client_socket), clients.end());
-
-        // enviar aviso para os demais clientes
-        for (int sock : clients) {
-            send(sock, leave_msg.c_str(), leave_msg.size(), 0);
-        }
     }
 
+    chatroom.client_left(client_id);
     close(client_socket);
-    LOG_INFO("Conexão com cliente encerrada.");
+}
+
+void SimpleTCPServer::broadcast(const std::string& msg) {
+    std::lock_guard<std::mutex> lock(clients_mutex);
+    for (int client : clients) {
+        send(client, msg.c_str(), msg.size(), 0);
+    }
 }

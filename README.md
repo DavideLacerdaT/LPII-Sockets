@@ -10,7 +10,7 @@ Headers:
 - libtslog.h       – Biblioteca de logging thread-safe.
 - server.h         – Declaração da classe SimpleTCPServer.
 - client.h         – Declaração da função client_thread_job.
-- chat_room.h      – (opcional, se houver funcionalidades adicionais de chat).
+- chatroom.h       – Declaração da classe ChatRoom, responsável por gerenciar mensagens e eventos de entrada/saída de clientes.
 
 Implementações:
 - server.cpp       – Implementa o servidor TCP:
@@ -18,10 +18,15 @@ Implementações:
                      - Notifica a entrada e saída de clientes via logs.
                      - Retransmite mensagens recebidas para todos os clientes conectados.
                      - Mantém lista de clientes ativa de forma thread-safe.
+                     - Gerencia IDs de clientes, reutilizando IDs disponíveis.
 - client.cpp       – Implementa clientes TCP simples:
                      - Conecta-se a um servidor na porta/host definidos.
                      - Envia mensagens e recebe mensagens retransmitidas pelo servidor.
-                     - Pode ser executado por múltiplas threads para simular vários clientes simultâneos.
+                     - Pode ser executado por múltiplas threads para simular vários clientes simultaneamente.
+- chatroom.cpp     – Implementa a classe ChatRoom:
+                     - Armazena e distribui mensagens entre clientes.
+                     - Fornece métodos thread-safe para adicionar mensagens, esperar por novas mensagens e notificar entrada/saída de clientes.
+                     - Atua como monitor de mensagens compartilhado pelo servidor.
 
 Main:
 - main.cpp         – Ponto de entrada:

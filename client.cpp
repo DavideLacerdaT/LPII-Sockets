@@ -5,9 +5,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
-#include <thread>
 
-void client_thread_job(int id, const std::string& host, int port, const std::string& message) {
+void client_thread_job(int id, const std::string& host, int port) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         LOG_ERROR("Cliente " + std::to_string(id) + ": erro ao criar socket.");
@@ -32,19 +31,16 @@ void client_thread_job(int id, const std::string& host, int port, const std::str
 
     LOG_INFO("Cliente " + std::to_string(id) + " conectado ao servidor.");
 
-    std::string full_msg = "cliente#" + std::to_string(id) + ": " + message;
-    send(sock, full_msg.c_str(), full_msg.size(), 0);
-
-    char buffer[1024];
+    std::string input;
     while (true) {
-        memset(buffer, 0, sizeof(buffer));
-        ssize_t n = recv(sock, buffer, sizeof(buffer) - 1, 0);
-        if (n <= 0) {
-            LOG_WARN("Cliente " + std::to_string(id) + " desconectado ou erro de rede.");
-            break;
+        std::getline(std::cin, input);
+        if (input.empty()) continue;
+        if (input == "/sair") break;
+
+        std::string msg = "cliente#" + std::to_string(id) + ": " + input;
+        if (send(sock, msg.c_str(), msg.size(), 0) < 0) {
+            LOG_WARN("Falha ao enviar mensagem.");
         }
-        buffer[n] = '\0';
-        LOG_INFO("Cliente " + std::to_string(id) + " recebeu: " + std::string(buffer));
     }
 
     close(sock);
